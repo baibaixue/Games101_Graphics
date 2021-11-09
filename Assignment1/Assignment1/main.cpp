@@ -87,7 +87,7 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio,
 
 int main(int argc, const char** argv)
 {
-    float angle = -40;
+    float angle = 0;
     bool command_line = false;
     std::string filename = "output.png";
     // 变量数大于3时，保存图片到本地
@@ -110,7 +110,7 @@ int main(int argc, const char** argv)
     std::vector<Eigen::Vector3i> ind{ {0, 1, 2} };
 
     // 转动轴
-    Eigen::Vector3f axis = { 1, 1 ,1 };
+    Eigen::Vector3f axis = { 1, 1 ,0 };
     auto pos_id = r.load_positions(pos);
     auto ind_id = r.load_indices(ind);
 

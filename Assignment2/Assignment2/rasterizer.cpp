@@ -134,7 +134,11 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
         maxx = std::max(maxx, (*i).x());
         maxy = std::max(maxy, (*i).y());
     }
-
+    minx = std::max(0.f, minx);
+    miny = std::max(0.f, miny);
+    maxx = std::max(0.f, maxx);
+    maxy = std::max(0.f, maxy);
+    //std::cout << "rasterize_triangle" << minx << "," << miny << "," << maxx<< "," << maxy << std::endl;
     // TODO : Find out the bounding box of current triangle.找到当前三角形的Bounding Box
     // iterate through the pixel and find if the current pixel is inside the triangle 遍历BoundingBox中的每个像素点，判断该点是否在三角形内部
 
@@ -150,6 +154,7 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
     {
         for (int h = miny; h < std::min((float)height, maxy); h++)
         {
+            //std::cout <<"minx:"<<minx<<" maxx:"<<maxx<<" miny:"<<miny<<" maxy:"<<maxy<<" (x,y):"<< w << "," << h << std::endl;
             Eigen::Vector3f point = Eigen::Vector3f(w, h, 1.f);
             if (insideTriangle(w, h, t.v))
             {
@@ -159,7 +164,7 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
                 float z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
                 z_interpolated *= w_reciprocal;
                 auto ind = get_index(w, h);
-                //std::cout << w_reciprocal << "," << z_interpolated << std::endl;
+                //std::cout <<"w:"<<w<<"h:"<< h <<"ind:"<<ind << std::endl;
                 if (z_interpolated < depth_buf[ind])
                 {
                     //std::cout << w_reciprocal << "," << z_interpolated << std::endl;

@@ -68,19 +68,20 @@ Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float z
     Eigen::Matrix4f projection;
     //将透视t投影转变为正交投影
     float fov_angle = (eye_fov / 180.0 * MY_PI) / 2;
+    float zn = -zNear;
+    float zf = -zFar;
     Eigen::Matrix4f presp;
-    presp << 1 / (aspect_ratio * std::tan(fov_angle)), 0, 0, 0,
-        0, 1 / std::tan(fov_angle), 0, 0,
-        0, 0, (zNear + zFar) / (zNear - zFar), -2 * zNear * zFar / (zNear - zFar),
+    presp << -1 / (aspect_ratio * std::tan(fov_angle)), 0, 0, 0,
+        0, -1 / std::tan(fov_angle), 0, 0,
+        0, 0, (zn + zf) / (zn - zf), -2 * zn * zf / (zn - zf),
         0, 0, 1, 0;
     projection = presp * projection;
-    return projection;
     return projection;
 }
 
 int main(int argc, const char** argv)
 {
-    float angle = 180;
+    float angle = 0;
     bool command_line = false;
     std::string filename = "output.png";
 
@@ -94,17 +95,17 @@ int main(int argc, const char** argv)
 
     Eigen::Vector3f eye_pos = { 0,0,5 };
 
-    Eigen::Vector3f Scale = { 1.f,1.f,1.f };
+    Eigen::Vector3f Scale = { 2.f,2.f,2.f };
     // 转动轴
-    Eigen::Vector3f axis = { 1, 1 ,0 };
+    Eigen::Vector3f axis = { 0, 0 ,1 };
     std::vector<Eigen::Vector3f> pos
     {
-            {2, 0, -2},
-            {0, 2, -2},
-            {-2, 0, -2},
-            {3.5, -1, -5},
-            {2.5, 1.5, -5},
-            {-1, 0.5, -5}
+        {2, 0, -2},
+        {0, 2, -10},
+        {-2, 0, -2},
+        {3.5, -1, -2},
+        {2.5, 1.5, -5},
+        {-1, 0.5, -5}
     };
     // 图元顶点集合，这里表示两个图元（三角形），每个图元三个顶点
     std::vector<Eigen::Vector3i> ind
@@ -152,7 +153,8 @@ int main(int argc, const char** argv)
     {
         r.clear(rst::Buffers::Color | rst::Buffers::Depth);
 
-        r.set_model(get_rotation(axis, angle));
+        //r.set_model(get_rotation(axis, angle));
+        r.set_model(get_model_matrix(angle, Scale));
         r.set_view(get_view_matrix(eye_pos));
         r.set_projection(get_projection_matrix(45, 1, 0.1, 50));
 
@@ -169,7 +171,7 @@ int main(int argc, const char** argv)
         if (key == 'a') angle += 10;
         else if (key == 'd') angle -= 10;
 
-        std::cout << angle << std::endl;
+        //std::cout << angle << std::endl;
     }
 
     return 0;
