@@ -46,17 +46,24 @@ Eigen::Matrix4f get_rotation(Eigen::Vector3f axis, float angle)
 {
     Eigen::Matrix4f Model = Eigen::Matrix4f::Identity();
 
-    Eigen::Matrix4f Identity = Eigen::Matrix4f::Identity();
+    Eigen::Matrix3f Identity = Eigen::Matrix3f::Identity();
 
-    Eigen::Matrix4f dualMatrix;
+    Eigen::Matrix3f dualMatrix, R;
 
     Eigen::Vector4f axis4f = Eigen::Vector4f(axis.x(), axis.y(), axis.z(), 1.f);
 
-    dualMatrix << 0, -axis.x(), axis.y(), 0,
-        axis.z(), 0, -axis.x(), 0,
-        -axis.y(), axis.x(), 0, 0,
+    dualMatrix << 0, -axis.z(), axis.y(),
+        axis.z(), 0, -axis.x(),
+        -axis.y(), axis.x(), 0;
+
+    float rotate = angle / 180.0 * MY_PI;
+    R = std::cos(rotate) * Identity + (1 - std::cos(rotate)) * axis * axis.transpose() + std::sin(rotate) * dualMatrix;
+
+    Eigen::Matrix4f Rotation;
+    Rotation << R(0, 0), R(0, 1), R(0, 2), 0,
+        R(1, 0), R(1, 1), R(1, 2), 0,
+        R(2, 0), R(2, 1), R(2, 2), 0,
         0, 0, 0, 1;
-    Eigen::Matrix4f Rotation = std::cos(angle / 180.0 * MY_PI) * Identity + (1 - std::cos(angle / 180.0 * MY_PI)) * axis4f * axis4f.transpose() + std::sin(angle / 180.0 * MY_PI) * dualMatrix;
 
     Model = Rotation * Model;
 
@@ -65,23 +72,36 @@ Eigen::Matrix4f get_rotation(Eigen::Vector3f axis, float angle)
 Eigen::Matrix4f get_projection_matrix(float eye_fov, float aspect_ratio, float zNear, float zFar)
 {
     // TODO: Copy-paste your implementation from the previous assignment.
-    Eigen::Matrix4f projection;
+    Eigen::Matrix4f projection = Eigen::Matrix4f::Identity();
     //将透视t投影转变为正交投影
-    float fov_angle = (eye_fov / 180.0 * MY_PI) / 2;
+    float fov_angle = (eye_fov / 2 / 180.0 * MY_PI);
     float zn = -zNear;
     float zf = -zFar;
-    Eigen::Matrix4f presp;
-    presp << -1 / (aspect_ratio * std::tan(fov_angle)), 0, 0, 0,
-        0, -1 / std::tan(fov_angle), 0, 0,
-        0, 0, (zn + zf) / (zn - zf), -2 * zn * zf / (zn - zf),
+    Eigen::Matrix4f presp = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f presp2ortho = Eigen::Matrix4f::Identity();
+    Eigen::Matrix4f ortho = Eigen::Matrix4f::Identity();
+    float t = -zn * std::tan(fov_angle); //t为n绝对值乘以tan值，znear和zfar坐标为负，这里zn取相反数
+    float r = aspect_ratio * t;
+    float l = -1 * r, b = -1 * t;
+    presp2ortho << 
+        zn, 0, 0, 0,
+        0, zn, 0, 0,
+        0, 0, zn + zf, -1 * zn * zf,
         0, 0, 1, 0;
+    ortho <<
+        2 / (r - l), 0, 0, 0,
+        0, 2 / (t - b), 0, 0,
+        0, 0, 2 / (zn - zf), -1 * (zn + zf)/(zn - zf),
+        0, 0, 0, 1;
+
+    presp = ortho * presp2ortho;
     projection = presp * projection;
     return projection;
 }
 
 int main(int argc, const char** argv)
 {
-    float angle = 0;
+    float angle = 50;
     bool command_line = false;
     std::string filename = "output.png";
 
@@ -95,15 +115,15 @@ int main(int argc, const char** argv)
 
     Eigen::Vector3f eye_pos = { 0,0,5 };
 
-    Eigen::Vector3f Scale = { 2.f,2.f,2.f };
+    Eigen::Vector3f Scale = { 3.f,3.f,3.f };
     // 转动轴
     Eigen::Vector3f axis = { 0, 0 ,1 };
     std::vector<Eigen::Vector3f> pos
     {
         {2, 0, -2},
-        {0, 2, -10},
+        {0, 2, -2},
         {-2, 0, -2},
-        {3.5, -1, -2},
+        {3.5, -1, -5},
         {2.5, 1.5, -5},
         {-1, 0.5, -5}
     };
@@ -114,6 +134,7 @@ int main(int argc, const char** argv)
             {3, 4, 5}
     };
 
+    
     std::vector<Eigen::Vector3f> cols
     {
             {217.0, 238.0, 185.0},
@@ -122,7 +143,16 @@ int main(int argc, const char** argv)
             {185.0, 217.0, 238.0},
             {185.0, 217.0, 238.0},
             {185.0, 217.0, 238.0}
-    };
+    };/*
+    std::vector<Eigen::Vector3f> cols
+    {
+        {255.0,0,0},
+        {255.0,0,0},
+        {255.0,0,0},
+        {0,255.0,0},
+        {0,255.0,0},
+        {0,255.0,0}
+    };*/
 
     auto pos_id = r.load_positions(pos);
     auto ind_id = r.load_indices(ind);
@@ -168,10 +198,8 @@ int main(int argc, const char** argv)
 
         //std::cout << "frame count: " << frame_count++ << '\n';
 
-        if (key == 'a') angle += 10;
-        else if (key == 'd') angle -= 10;
-
-        //std::cout << angle << std::endl;
+        if (key == 'a' || key == 'A') angle += 10;
+        else if (key == 'd' || key == 'D') angle -= 10;
     }
 
     return 0;

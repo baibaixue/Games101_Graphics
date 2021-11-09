@@ -67,7 +67,7 @@ namespace rst
         void set_projection(const Eigen::Matrix4f& p);
 
         void set_pixel(const Eigen::Vector3f& point, const Eigen::Vector3f& color);
-        void set_depth(const Eigen::Vector3f& point, const float depth);
+        void set_depth(const Eigen::Vector3f& point, const float depth, const int sample_index_x = 0, const int sample_index_y = 0);
 
         void clear(Buffers buff);
 
@@ -80,6 +80,8 @@ namespace rst
 
         void rasterize_triangle(const Triangle& t);
 
+        // MSAA 反走样算法（抗锯齿）
+        void MSAA(float z_interpolated,const Eigen::Vector3f& point, const Triangle& t);
         // VERTEX SHADER -> MVP -> Clipping -> /.W -> VIEWPORT -> DRAWLINE/DRAWTRI -> FRAGSHADER
 
     private:
@@ -96,6 +98,7 @@ namespace rst
         std::vector<float> depth_buf;
         int get_index(int x, int y);
 
+        int get_index(int x, int y, int sx, int sy);
         int width, height;
 
         int next_id = 0;

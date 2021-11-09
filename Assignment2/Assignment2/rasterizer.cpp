@@ -40,7 +40,7 @@ auto to_vec4(const Eigen::Vector3f& v3, float w = 1.0f)
 }
 
 //判断点（x,y）是否在三角形中
-static bool insideTriangle(int x, int y, const Vector3f* _v)
+static bool insideTriangle(float x, float y, const Vector3f* _v)
 {
     // TODO : Implement this function to check if the point (x, y) is inside the triangle represented by _v[0], _v[1], _v[2]
     Eigen::Vector3f point = Eigen::Vector3f(x, y, 1.f);
@@ -51,11 +51,14 @@ static bool insideTriangle(int x, int y, const Vector3f* _v)
     {
         Eigen::Vector3f VP = point - _v[i];
         Eigen::Vector3f VV = _v[(i + 1) % 3] - _v[i];
-        res[i] = VP.x() * VV.y() - VP.y() * VV.x();
+        res[i] = VP.x() * VV.y()* 1.0 - VP.y() * VV.x() * 1.0;
     }
-    if (res[0] < 0 && res[1] < 0 && res[2] < 0 || res[0] > 0 && res[1] > 0 && res[2] > 0) return true;
-
-    return false;
+    for (int i = 0; i < 3; i++)
+    {
+        int j = (i + 1) % 3;
+        if (res[i] * res[j] <= 0) return false;
+    }
+    return true;
 }
 /* 计算重心，c1,c2,c3分别表示点（x,y）在三角形v0，v1,v2三点的差值权重，即：
  * x = c1 * v[0].x() + c2 * v[1].x() + c3 * v[2].x();
@@ -85,6 +88,7 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
     for (auto& i : ind)
     {
         Triangle t;
+        //std::cout << buf[i[0]].z() << std::endl;
         Eigen::Vector4f v[] = {
                 mvp * to_vec4(buf[i[0]], 1.0f),
                 mvp * to_vec4(buf[i[1]], 1.0f),
@@ -101,14 +105,13 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
             vert.y() = 0.5 * height * (vert.y() + 1.0);
             vert.z() = vert.z() * f1 + f2;
         }
-
         for (int i = 0; i < 3; ++i)
         {
             t.setVertex(i, v[i].head<3>());
             t.setVertex(i, v[i].head<3>());
             t.setVertex(i, v[i].head<3>());
         }
-
+        //std::cout << v[0].z() << std::endl;
         auto col_x = col[i[0]];
         auto col_y = col[i[1]];
         auto col_z = col[i[2]];
@@ -156,26 +159,71 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
         {
             //std::cout <<"minx:"<<minx<<" maxx:"<<maxx<<" miny:"<<miny<<" maxy:"<<maxy<<" (x,y):"<< w << "," << h << std::endl;
             Eigen::Vector3f point = Eigen::Vector3f(w, h, 1.f);
-            if (insideTriangle(w, h, t.v))
+            if (insideTriangle(w , h , t.v))
             {
                 float _alpha, _beta, _gamma;
-                std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(w, h, t.v);
-                float w_reciprocal = 1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
+                std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(w , h , t.v);
+                float w_reciprocal = -1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
                 float z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
                 z_interpolated *= w_reciprocal;
-                auto ind = get_index(w, h);
-                //std::cout <<"w:"<<w<<"h:"<< h <<"ind:"<<ind << std::endl;
-                if (z_interpolated < depth_buf[ind])
-                {
-                    //std::cout << w_reciprocal << "," << z_interpolated << std::endl;
-                    set_depth(point, z_interpolated);
-                    set_pixel(point, t.getColor());
-                }
+                //std::cout << z_interpolated << std::endl;
+                MSAA(z_interpolated, point, t);
             }
         }
     }
 }
 
+void rst::rasterizer::MSAA(float z_interpolated,const Eigen::Vector3f& point, const Triangle& t)
+{
+    auto ind = get_index(point.x(), point.y());
+    if (not anti_alising || sampling_value == 0) 
+    {
+        if (z_interpolated < depth_buf[ind])
+        {
+            set_depth(point, z_interpolated);
+            set_pixel(point, t.getColor());
+        }
+        return;
+    }
+    int insideTriCount = 0;
+    float samplePointCounts = sampling_value * sampling_value * 1.0;
+    float minZ_interpolated = std::numeric_limits<float>::infinity();
+    for (int i = 0; i < sampling_value; i++)
+    {
+        for (int j = 0; j < sampling_value; j++)
+        {
+            ind = get_index(point.x(), point.y(), i, j);
+            auto v = t.toVector4();
+            float deltax = (i * 2.f + 1.f) / (sampling_value * 2.f);                 
+            float deltay = (j * 2.f + 1.f) / (sampling_value * 2.f);
+            Eigen::Vector3f sample_point = Eigen::Vector3f(point.x() - 0.5 + deltax, point.y() - 0.5 + deltay, 1.f);
+            float _alpha, _beta, _gamma;
+            std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(sample_point.x(), sample_point.y(), t.v);
+            float w_reciprocal = -1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
+            float sample_z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
+            sample_z_interpolated *= w_reciprocal;
+            //std::cout << point.x() <<" ,"<< point.y() <<","<<i<<","<<j<<","<<ind<<","<<depth_buf.size()<< std::endl;
+            if (insideTriangle(sample_point.x(), sample_point.y(), t.v) && sample_z_interpolated <= depth_buf[ind])
+            {
+                insideTriCount++;
+                set_depth(point, sample_z_interpolated, i, j);
+            }
+        }
+    }
+    //std::cout << insideTriCount << std::endl;
+    //if (insideTriCount != 4 && insideTriCount != 0) std::cout << insideTriCount << std::endl;
+    //Eigen::Vector3f resColor = t.getColor() * (insideTriCount * 1.0 / (sampling_value * sampling_value));
+    //if (minZ_interpolated <= depth_buf[ind])
+    {
+        float n = (insideTriCount * 1.0 / (samplePointCounts));
+        
+        Eigen::Vector3f resColor = t.getColor() * n + frame_buf[get_index(point.x(), point.y())] ;
+        //std::cout << n << " color:"<< resColor << std::endl;
+        //set_depth(point, minZ_interpolated);
+        set_pixel(point, resColor);
+    }
+    return;
+}
 void rst::rasterizer::set_model(const Eigen::Matrix4f& m)
 {
     model = m;
@@ -206,12 +254,28 @@ void rst::rasterizer::clear(rst::Buffers buff)
 rst::rasterizer::rasterizer(int w, int h) : width(w), height(h)
 {
     frame_buf.resize(w * h);
-    depth_buf.resize(w * h);
+    if (not anti_alising)
+    {
+        depth_buf.resize(w * h);
+    }
+    else {
+        depth_buf.resize(w * h * sampling_value * sampling_value);
+    }
+    
 }
 
 int rst::rasterizer::get_index(int x, int y)
 {
     return (height - 1 - y) * width + x;
+}
+
+int rst::rasterizer::get_index(int x, int y, int sx, int sy)
+{
+    int _x = x + sx * width;
+    int _y = y + sy * height;
+    int _width = width * sampling_value;
+    int _height = height * sampling_value;
+    return (_height - 1 - _y) * _width + _x;
 }
 
 void rst::rasterizer::set_pixel(const Eigen::Vector3f& point, const Eigen::Vector3f& color)
@@ -222,10 +286,18 @@ void rst::rasterizer::set_pixel(const Eigen::Vector3f& point, const Eigen::Vecto
 
 }
 
-void rst::rasterizer::set_depth(const Eigen::Vector3f& point, const float depth)
+void rst::rasterizer::set_depth(const Eigen::Vector3f& point, const float depth, const int sample_index_x, const int sample_index_y)
 {
-    auto ind = get_index(point.x(), point.y());
-    depth_buf[ind] = depth;
+    if (not anti_alising)
+    {
+        auto ind = get_index(point.x(), point.y());
+        depth_buf[ind] = depth;
+    }
+    else 
+    {
+        auto ind = get_index(point.x(),point.y(),sample_index_x,sample_index_y);
+        depth_buf[ind] = depth;
+    }
 }
 
 // clang-format on
