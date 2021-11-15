@@ -88,16 +88,20 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
     for (auto& i : ind)
     {
         Triangle t;
-        //std::cout << buf[i[0]].z() << std::endl;
+        //std::cout <<"buf-(z,w): "<< buf[i[0]].z()<<",1" << std::endl;
         Eigen::Vector4f v[] = {
                 mvp * to_vec4(buf[i[0]], 1.0f),
                 mvp * to_vec4(buf[i[1]], 1.0f),
                 mvp * to_vec4(buf[i[2]], 1.0f)
         };
+        //std::cout << "afterMVP-(z,w): " << v[0].z() << "," << v[0].w() << std::endl;
         //Homogeneous division
         for (auto& vec : v) {
-            vec /= vec.w();
+            vec.x() /= vec.w();
+            vec.y() /= vec.w();
+            vec.z() /= vec.w();
         }
+        //std::cout << "after/w-(z,w): " << v[0].z() << "," << v[0].w() << std::endl;
         //Viewport transformation
         for (auto& vert : v)
         {
@@ -105,11 +109,11 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
             vert.y() = 0.5 * height * (vert.y() + 1.0);
             vert.z() = vert.z() * f1 + f2;
         }
+        //std::cout << "after-viewport-(z,w): " << v[0].z() << "," << v[0].w() << std::endl;
         for (int i = 0; i < 3; ++i)
         {
-            t.setVertex(i, v[i].head<3>());
-            t.setVertex(i, v[i].head<3>());
-            t.setVertex(i, v[i].head<3>());
+            t.setVertex(i, v[i]);
+            //t.setVertex(i, v[i].head<3>());
         }
         //std::cout << v[0].z() << std::endl;
         auto col_x = col[i[0]];
@@ -126,16 +130,21 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
 
 //Screen space rasterization
 void rst::rasterizer::rasterize_triangle(const Triangle& t) {
-    auto v = t.toVector4();
+    auto v = t.v;
+    Eigen::Vector3f v3f[3];
+    for (int i = 0; i < 3; i++)
+    {
+        v3f[i] = t.v[i].head<3>();
+    }
     // Bounding Box
     float minx = width, miny = height, maxx = 0, maxy = 0;
-    for (auto i = v.begin(); i != v.end(); i++)
+    for (auto i = 0; i < 3; i++)
     {
 
-        minx = std::min(minx, (*i).x());
-        miny = std::min(miny, (*i).y());
-        maxx = std::max(maxx, (*i).x());
-        maxy = std::max(maxy, (*i).y());
+        minx = std::min(minx, v[i].x());
+        miny = std::min(miny, v[i].y());
+        maxx = std::max(maxx, v[i].x());
+        maxy = std::max(maxy, v[i].y());
     }
     minx = std::max(0.f, minx);
     miny = std::max(0.f, miny);
@@ -159,26 +168,32 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
         {
             //std::cout <<"minx:"<<minx<<" maxx:"<<maxx<<" miny:"<<miny<<" maxy:"<<maxy<<" (x,y):"<< w << "," << h << std::endl;
             Eigen::Vector3f point = Eigen::Vector3f(w, h, 1.f);
-            if (insideTriangle(w , h , t.v))
+            if (insideTriangle(w , h , v3f))
             {
                 float _alpha, _beta, _gamma;
-                std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(w , h , t.v);
-                float w_reciprocal = -1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
+                std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(w , h , v3f);
+                float w_reciprocal = 1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
                 float z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
+                //float z_interpolated = _alpha * v[0].z() + _beta * v[1].z()  + _gamma * v[2].z();
                 z_interpolated *= w_reciprocal;
-                //std::cout << z_interpolated << std::endl;
-                MSAA(z_interpolated, point, t);
+                //std::cout << w_reciprocal << ", "<< z_interpolated << std::endl;
+                MSAA(z_interpolated, point, t, v3f);
             }
         }
     }
 }
 
-void rst::rasterizer::MSAA(float z_interpolated,const Eigen::Vector3f& point, const Triangle& t)
+void rst::rasterizer::MSAA(float z_interpolated,const Eigen::Vector3f& point, const Triangle& t, const Eigen::Vector3f* v3f)
 {
+    //Eigen::Vector3f v3f[3];
+    //for (int i = 0; i < 3; i++)
+    //{
+    //    v3f[i] = t.v[i].head<3>();
+    //}
     auto ind = get_index(point.x(), point.y());
     if (not anti_alising || sampling_value == 0) 
     {
-        if (z_interpolated < depth_buf[ind])
+        if (z_interpolated > depth_buf[ind])
         {
             set_depth(point, z_interpolated);
             set_pixel(point, t.getColor());
@@ -198,12 +213,12 @@ void rst::rasterizer::MSAA(float z_interpolated,const Eigen::Vector3f& point, co
             float deltay = (j * 2.f + 1.f) / (sampling_value * 2.f);
             Eigen::Vector3f sample_point = Eigen::Vector3f(point.x() - 0.5 + deltax, point.y() - 0.5 + deltay, 1.f);
             float _alpha, _beta, _gamma;
-            std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(sample_point.x(), sample_point.y(), t.v);
-            float w_reciprocal = -1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
+            std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(sample_point.x(), sample_point.y(), v3f);
+            float w_reciprocal = 1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
             float sample_z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
             sample_z_interpolated *= w_reciprocal;
             //std::cout << point.x() <<" ,"<< point.y() <<","<<i<<","<<j<<","<<ind<<","<<depth_buf.size()<< std::endl;
-            if (insideTriangle(sample_point.x(), sample_point.y(), t.v) && sample_z_interpolated <= depth_buf[ind])
+            if (insideTriangle(sample_point.x(), sample_point.y(), v3f) && sample_z_interpolated > depth_buf[ind])
             {
                 insideTriCount++;
                 set_depth(point, sample_z_interpolated, i, j);
@@ -247,7 +262,7 @@ void rst::rasterizer::clear(rst::Buffers buff)
     }
     if ((buff & rst::Buffers::Depth) == rst::Buffers::Depth)
     {
-        std::fill(depth_buf.begin(), depth_buf.end(), std::numeric_limits<float>::infinity());
+        std::fill(depth_buf.begin(), depth_buf.end(), -1 * std::numeric_limits<float>::infinity());
     }
 }
 

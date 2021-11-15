@@ -81,7 +81,7 @@ namespace rst
         void rasterize_triangle(const Triangle& t);
 
         // MSAA 反走样算法（抗锯齿）
-        void MSAA(float z_interpolated,const Eigen::Vector3f& point, const Triangle& t);
+        void MSAA(float z_interpolated,const Eigen::Vector3f& point, const Triangle& t, const Eigen::Vector3f* v3f);
         // VERTEX SHADER -> MVP -> Clipping -> /.W -> VIEWPORT -> DRAWLINE/DRAWTRI -> FRAGSHADER
 
     private:
