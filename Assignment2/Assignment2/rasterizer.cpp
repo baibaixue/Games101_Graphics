@@ -89,6 +89,12 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
     {
         Triangle t;
         //std::cout <<"buf-(z,w): "<< buf[i[0]].z()<<",1" << std::endl;
+        Eigen::Vector4f MV[] = {
+                view * model * to_vec4(buf[i[0]], 1.0f),
+                view * model * to_vec4(buf[i[1]], 1.0f),
+                view * model * to_vec4(buf[i[2]], 1.0f)
+        };
+        //std::cout << "afterMV-(z,w): " << MV[0].z() << "," << MV[0].w() << std::endl;
         Eigen::Vector4f v[] = {
                 mvp * to_vec4(buf[i[0]], 1.0f),
                 mvp * to_vec4(buf[i[1]], 1.0f),
@@ -109,7 +115,7 @@ void rst::rasterizer::draw(pos_buf_id pos_buffer, ind_buf_id ind_buffer, col_buf
             vert.y() = 0.5 * height * (vert.y() + 1.0);
             vert.z() = vert.z() * f1 + f2;
         }
-        //std::cout << "after-viewport-(z,w): " << v[0].z() << "," << v[0].w() << std::endl;
+        std::cout << "after-viewport-(z,w): " << v[0].z() << "," << v[0].w() << std::endl;
         for (int i = 0; i < 3; ++i)
         {
             t.setVertex(i, v[i]);
@@ -172,10 +178,10 @@ void rst::rasterizer::rasterize_triangle(const Triangle& t) {
             {
                 float _alpha, _beta, _gamma;
                 std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(w , h , v3f);
-                float w_reciprocal = 1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
-                float z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
+                float z_interpolated = 1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
+                //float z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
                 //float z_interpolated = _alpha * v[0].z() + _beta * v[1].z()  + _gamma * v[2].z();
-                z_interpolated *= w_reciprocal;
+                //z_interpolated *= w_reciprocal;
                 //std::cout << w_reciprocal << ", "<< z_interpolated << std::endl;
                 MSAA(z_interpolated, point, t, v3f);
             }
@@ -208,16 +214,16 @@ void rst::rasterizer::MSAA(float z_interpolated,const Eigen::Vector3f& point, co
         for (int j = 0; j < sampling_value; j++)
         {
             ind = get_index(point.x(), point.y(), i, j);
-            auto v = t.toVector4();
+            auto v = t.v;
             float deltax = (i * 2.f + 1.f) / (sampling_value * 2.f);                 
             float deltay = (j * 2.f + 1.f) / (sampling_value * 2.f);
             Eigen::Vector3f sample_point = Eigen::Vector3f(point.x() - 0.5 + deltax, point.y() - 0.5 + deltay, 1.f);
             float _alpha, _beta, _gamma;
             std::tie(_alpha, _beta, _gamma) = computeBarycentric2D(sample_point.x(), sample_point.y(), v3f);
-            float w_reciprocal = 1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
-            float sample_z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
-            sample_z_interpolated *= w_reciprocal;
-            //std::cout << point.x() <<" ,"<< point.y() <<","<<i<<","<<j<<","<<ind<<","<<depth_buf.size()<< std::endl;
+            float sample_z_interpolated = 1.0 / (_alpha / v[0].w() + _beta / v[1].w() + _gamma / v[2].w());
+            float z_interpolated = _alpha * v[0].z() / v[0].w() + _beta * v[1].z() / v[1].w() + _gamma * v[2].z() / v[2].w();
+            z_interpolated *= sample_z_interpolated;
+            //std::cout << v[0].w()<<"," << z_interpolated << " ," << sample_z_interpolated << std::endl;
             if (insideTriangle(sample_point.x(), sample_point.y(), v3f) && sample_z_interpolated > depth_buf[ind])
             {
                 insideTriCount++;
