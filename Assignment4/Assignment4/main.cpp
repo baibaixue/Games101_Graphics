@@ -3,7 +3,8 @@
 #include <opencv2/opencv.hpp>
 
 std::vector<cv::Point2f> control_points;
-
+std::vector<cv::Point2f> bezierPoints;
+bool NeedAntiAliasing = true;
 void mouse_handler(int event, int x, int y, int flags, void *userdata) 
 {
     if (event == cv::EVENT_LBUTTONDOWN && control_points.size() < 4) 
@@ -55,11 +56,22 @@ void bezier(const std::vector<cv::Point2f> &control_points, cv::Mat &window)
     for (double t = 0.0; t <= 1.0; t += 0.001)
     {
        cv::Point2f point = recursive_bezier(control_points, t);
+       bezierPoints.emplace_back(point.x, point.y);
+       //window.at<cv::Vec3b>(point.y, point.x+1)[1] = 255;
+       //window.at<cv::Vec3b>(point.y+1, point.x)[1] = 255;
        window.at<cv::Vec3b>(point.y, point.x)[1] = 255;
+       //window.at<cv::Vec3b>(point.y+1, point.x+1)[1] = 255;                             
+    }
+    if (NeedAntiAliasing)
+    {
+        for (int i = 0; i < bezierPoints.size(); i++)
+        {
+            auto point = bezierPoints[i];
+            //window.at<cv::Vec3b>(point.y, point.x) = (window.at<cv::Vec3b>(point.y + 1, point.x) + window.at<cv::Vec3b>(point.y, point.x + 1) + window.at<cv::Vec3b>(point.y, point.x) + window.at<cv::Vec3b>(point.y + 1, point.x + 1)) / 4.f;
+        }
     }
     // TODO: Iterate through all t = 0 to t = 1 with small steps, and call de Casteljau's 
     // recursive Bezier algorithm.
-
 }
 
 int main() 
@@ -80,7 +92,7 @@ int main()
 
         if (control_points.size() == 4) 
         {
-            naive_bezier(control_points, window);
+            //naive_bezier(control_points, window);
             bezier(control_points, window);
 
             cv::imshow("Bezier Curve", window);
