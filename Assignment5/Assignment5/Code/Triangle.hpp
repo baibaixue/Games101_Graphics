@@ -3,17 +3,33 @@
 #include "Object.hpp"
 
 #include <cstring>
-
+// 判断光线是否和三角形面相交
 bool rayTriangleIntersect(const Vector3f& v0, const Vector3f& v1, const Vector3f& v2, const Vector3f& orig,
                           const Vector3f& dir, float& tnear, float& u, float& v)
 {
+    float t, d1, d2;
+    Vector3f E1 = v1 - v0;
+    Vector3f E2 = v2 - v0;
+    Vector3f S = orig - v0;
+    Vector3f S1 = crossProduct(dir, E2);
+    Vector3f S2 = crossProduct(S, E1);
+
+    Vector3f res = 1.f / (dotProduct(S1, E1)) * Vector3f(dotProduct(S2, E2), dotProduct(S1, S), dotProduct(S2, dir));
+    tnear = res.x;
+    u = res.y;
+    v = res.z;
+    if ((tnear + FLT_EPSILON) >= 0 && (u + FLT_EPSILON) >= 0 && (v - FLT_EPSILON) >= 0 && (1 - u - v + FLT_EPSILON) >= 0)
+    {
+        return true;
+    }
+    return false;
     // TODO: Implement this function that tests whether the triangle
     // that's specified bt v0, v1 and v2 intersects with the ray (whose
     // origin is *orig* and direction is *dir*)
     // Also don't forget to update tnear, u and v.
-    return false;
+    
 }
-
+// 三角形网格物体
 class MeshTriangle : public Object
 {
 public:
@@ -32,9 +48,9 @@ public:
         stCoordinates = std::unique_ptr<Vector2f[]>(new Vector2f[maxIndex]);
         memcpy(stCoordinates.get(), st, sizeof(Vector2f) * maxIndex);
     }
-
+    // 判断光线是否和三角形网格相交（需要遍历所有三角形，有一个三角形和光线相交，则该物体和光线相交）
     bool intersect(const Vector3f& orig, const Vector3f& dir, float& tnear, uint32_t& index,
-                   Vector2f& uv) const override
+                   Vector2f& uv) const override 
     {
         bool intersect = false;
         for (uint32_t k = 0; k < numTriangles; ++k)
@@ -55,7 +71,7 @@ public:
 
         return intersect;
     }
-
+    // 获得物体表面属性（第index个三角形的法向量N和纹理）
     void getSurfaceProperties(const Vector3f&, const Vector3f&, const uint32_t& index, const Vector2f& uv, Vector3f& N,
                               Vector2f& st) const override
     {
@@ -70,7 +86,7 @@ public:
         const Vector2f& st2 = stCoordinates[vertexIndex[index * 3 + 2]];
         st = st0 * (1 - uv.x - uv.y) + st1 * uv.x + st2 * uv.y;
     }
-
+    // 根据相交点的纹理坐标求像素值（漫反射颜色）
     Vector3f evalDiffuseColor(const Vector2f& st) const override
     {
         float scale = 5;
@@ -78,8 +94,8 @@ public:
         return lerp(Vector3f(0.815, 0.235, 0.031), Vector3f(0.937, 0.937, 0.231), pattern);
     }
 
-    std::unique_ptr<Vector3f[]> vertices;
-    uint32_t numTriangles;
-    std::unique_ptr<uint32_t[]> vertexIndex;
-    std::unique_ptr<Vector2f[]> stCoordinates;
+    std::unique_ptr<Vector3f[]> vertices;//所有顶点
+    uint32_t numTriangles;  //三角形数量
+    std::unique_ptr<uint32_t[]> vertexIndex;// 顶点索引
+    std::unique_ptr<Vector2f[]> stCoordinates;// 纹理坐标
 };

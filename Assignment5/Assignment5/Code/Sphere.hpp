@@ -2,7 +2,7 @@
 
 #include "Object.hpp"
 #include "Vector.hpp"
-
+// 球体，Object子类
 class Sphere : public Object
 {
 public:
@@ -11,7 +11,7 @@ public:
         , radius(r)
         , radius2(r * r)
     {}
-
+    // 判断光线是否与球面相交，返回最近的交点（>0时）
     bool intersect(const Vector3f& orig, const Vector3f& dir, float& tnear, uint32_t&, Vector2f&) const override
     {
         // analytic solution
@@ -30,13 +30,13 @@ public:
 
         return true;
     }
-
+    // 计算球面上P点的法向量
     void getSurfaceProperties(const Vector3f& P, const Vector3f&, const uint32_t&, const Vector2f&,
                               Vector3f& N, Vector2f&) const override
     {
         N = normalize(P - center);
     }
 
-    Vector3f center;
-    float radius, radius2;
+    Vector3f center;//球的中心
+    float radius, radius2;  // 球的半径和半径的平方
 };

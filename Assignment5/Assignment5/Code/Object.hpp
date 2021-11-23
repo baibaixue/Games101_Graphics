@@ -16,12 +16,12 @@ public:
     {}
 
     virtual ~Object() = default;
-
+    // 判断光线是否与物体相交
     virtual bool intersect(const Vector3f&, const Vector3f&, float&, uint32_t&, Vector2f&) const = 0;
-
+    // 获取物体表面材质属性
     virtual void getSurfaceProperties(const Vector3f&, const Vector3f&, const uint32_t&, const Vector2f&, Vector3f&,
                                       Vector2f&) const = 0;
-
+    // 根据uv计算当前点的漫反射颜色
     virtual Vector3f evalDiffuseColor(const Vector2f&) const
     {
         return diffuseColor;
@@ -29,8 +29,8 @@ public:
 
     // material properties
     MaterialType materialType;
-    float ior;
-    float Kd, Ks;
-    Vector3f diffuseColor;
-    float specularExponent;
+    float ior;  // 折射率
+    float Kd, Ks;   // 漫反射系数和镜面反射系数
+    Vector3f diffuseColor;  // 漫反射颜色
+    float specularExponent;// 镜面反射指数
 };

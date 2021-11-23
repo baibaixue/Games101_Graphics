@@ -87,12 +87,12 @@ public:
     }
     float x, y;
 };
-
+// 插值
 inline Vector3f lerp(const Vector3f& a, const Vector3f& b, const float& t)
 {
     return a * (1 - t) + b * t;
 }
-
+// 单位化
 inline Vector3f normalize(const Vector3f& v)
 {
     float mag2 = v.x * v.x + v.y * v.y + v.z * v.z;
@@ -104,12 +104,12 @@ inline Vector3f normalize(const Vector3f& v)
 
     return v;
 }
-
+// 点乘
 inline float dotProduct(const Vector3f& a, const Vector3f& b)
 {
     return a.x * b.x + a.y * b.y + a.z * b.z;
 }
-
+// 叉乘
 inline Vector3f crossProduct(const Vector3f& a, const Vector3f& b)
 {
     return Vector3f(a.y * b.z - a.z * b.y, a.z * b.x - a.x * b.z, a.x * b.y - a.y * b.x);
