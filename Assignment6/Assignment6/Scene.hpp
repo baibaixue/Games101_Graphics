@@ -12,7 +12,6 @@
 #include "BVH.hpp"
 #include "Ray.hpp"
 
-
 class Scene
 {
 public:

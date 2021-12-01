@@ -2,7 +2,7 @@
 #include <iostream>
 #include <cmath>
 #include <random>
-
+#include <opencv2/opencv.hpp>
 #undef M_PI
 #define M_PI 3.141592653589793f
 
@@ -11,7 +11,7 @@ const float kInfinity = std::numeric_limits<float>::max();
 
 inline float clamp(const float &lo, const float &hi, const float &v)
 { return std::max(lo, std::min(hi, v)); }
-
+// 二元一次方程求解 
 inline  bool solveQuadratic(const float &a, const float &b, const float &c, float &x0, float &x1)
 {
     float discr = b * b - 4 * a * c;
@@ -27,7 +27,7 @@ inline  bool solveQuadratic(const float &a, const float &b, const float &c, floa
     if (x0 > x1) std::swap(x0, x1);
     return true;
 }
-
+// 浮点数中取随机
 inline float get_random_float()
 {
     std::random_device dev;
@@ -36,7 +36,7 @@ inline float get_random_float()
 
     return dist(rng);
 }
-
+// 加载进度条
 inline void UpdateProgress(float progress)
 {
     int barWidth = 70;

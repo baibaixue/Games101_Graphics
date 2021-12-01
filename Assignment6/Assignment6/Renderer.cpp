@@ -34,7 +34,9 @@ void Renderer::Render(const Scene& scene)
             //  vector that passes through it.
             // Also, don't forget to multiply both of them with the variable
             // *scale*, and x (horizontal) variable with the *imageAspectRatio*
-
+            Vector3f dir = normalize(Vector3f(x, y, -1));
+            Ray light = Ray(eye_pos, dir);
+            framebuffer[m++] = 255 * scene.castRay(light,scene.maxDepth);
             // Don't forget to normalize this direction!
 
         }
@@ -47,10 +49,22 @@ void Renderer::Render(const Scene& scene)
     (void)fprintf(fp, "P6\n%d %d\n255\n", scene.width, scene.height);
     for (auto i = 0; i < scene.height * scene.width; ++i) {
         static unsigned char color[3];
-        color[0] = (unsigned char)(255 * clamp(0, 1, framebuffer[i].x));
-        color[1] = (unsigned char)(255 * clamp(0, 1, framebuffer[i].y));
-        color[2] = (unsigned char)(255 * clamp(0, 1, framebuffer[i].z));
+        color[0] = (unsigned char)(clamp(0, 1, framebuffer[i].x));
+        color[1] = (unsigned char)(clamp(0, 1, framebuffer[i].y));
+        color[2] = (unsigned char)(clamp(0, 1, framebuffer[i].z));
         fwrite(color, 1, 3, fp);
     }
-    fclose(fp);    
+    fclose(fp); 
+    int key = 0;
+    while (key != 27)
+    {
+        std::string filename = "output.png";
+        cv::Mat image(scene.height, scene.width, CV_32FC3, framebuffer.data());
+        image.convertTo(image, CV_8UC3, 1.0f);
+        cv::cvtColor(image, image, cv::COLOR_RGB2BGR);
+
+        cv::imshow("image", image);
+        cv::imwrite(filename, image);
+        key = cv::waitKey(10);
+    }
 }

@@ -6,16 +6,22 @@
 #define RAYTRACING_MATERIAL_H
 
 #include "Vector.hpp"
-
+// 材质类型
 enum MaterialType { DIFFUSE_AND_GLOSSY, REFLECTION_AND_REFRACTION, REFLECTION };
-
+// 材质
 class Material{
 public:
+    // 材质类型
     MaterialType m_type;
+    // 颜色
     Vector3f m_color;
+    // 发出光线
     Vector3f m_emission;
+    // 折射率
     float ior;
+    // 漫反射系数和镜面反射系数
     float Kd, Ks;
+    // 镜面反射指数
     float specularExponent;
     //Texture tex;
 

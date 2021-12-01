@@ -2,7 +2,7 @@
 // This loader is created by Robert Smith.
 // https://github.com/Bly7/OBJ-Loader
 // Use the MIT license.
-
+// ¶ÁÈ¡3DÄ£ÐÍ
 #pragma once
 
 #include <optional>

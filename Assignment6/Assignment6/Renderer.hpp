@@ -4,6 +4,7 @@
 #include "Scene.hpp"
 
 #pragma once
+// 碰撞点结构体
 struct hit_payload
 {
     float tNear;
@@ -11,7 +12,7 @@ struct hit_payload
     Vector2f uv;
     Object* hit_obj;
 };
-
+// 渲染器
 class Renderer
 {
 public:

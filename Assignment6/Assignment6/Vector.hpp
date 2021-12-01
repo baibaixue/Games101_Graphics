@@ -8,7 +8,7 @@
 #include <iostream>
 #include <cmath>
 #include <algorithm>
-
+// 向量（3维向量）
 class Vector3f {
 public:
     float x, y, z;
@@ -30,12 +30,12 @@ public:
     double       operator[](int index) const;
     double&      operator[](int index);
 
-
+    // 取两向量中的最小值
     static Vector3f Min(const Vector3f &p1, const Vector3f &p2) {
         return Vector3f(std::min(p1.x, p2.x), std::min(p1.y, p2.y),
                        std::min(p1.z, p2.z));
     }
-
+    // 取两向量中的最大值
     static Vector3f Max(const Vector3f &p1, const Vector3f &p2) {
         return Vector3f(std::max(p1.x, p2.x), std::max(p1.y, p2.y),
                        std::max(p1.z, p2.z));
@@ -45,7 +45,7 @@ inline double Vector3f::operator[](int index) const {
     return (&x)[index];
 }
 
-
+// 二维向量
 class Vector2f
 {
 public:
@@ -56,10 +56,10 @@ public:
     Vector2f operator + (const Vector2f &v) const { return Vector2f(x + v.x, y + v.y); }
     float x, y;
 };
-
+//插值
 inline Vector3f lerp(const Vector3f &a, const Vector3f& b, const float &t)
 { return a * (1 - t) + b * t; }
-
+// 向量单位化
 inline Vector3f normalize(const Vector3f &v)
 {
     float mag2 = v.x * v.x + v.y * v.y + v.z * v.z;
@@ -70,10 +70,10 @@ inline Vector3f normalize(const Vector3f &v)
 
     return v;
 }
-
+// 点乘
 inline float dotProduct(const Vector3f &a, const Vector3f &b)
 { return a.x * b.x + a.y * b.y + a.z * b.z; }
-
+// 叉乘
 inline Vector3f crossProduct(const Vector3f &a, const Vector3f &b)
 {
     return Vector3f(

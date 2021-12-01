@@ -4,17 +4,15 @@
 
 #include "Scene.hpp"
 
-
 void Scene::buildBVH() {
     printf(" - Generating BVH...\n\n");
     this->bvh = new BVHAccel(objects, 1, BVHAccel::SplitMethod::NAIVE);
 }
-
 Intersection Scene::intersect(const Ray &ray) const
 {
     return this->bvh->Intersect(ray);
 }
-
+// 光线追踪
 bool Scene::trace(
         const Ray &ray,
         const std::vector<Object*> &objects,

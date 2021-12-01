@@ -8,7 +8,7 @@
 #include "Triangle.hpp"
 #include <cassert>
 #include <array>
-
+// 判断三角形面和光线相交
 bool rayTriangleIntersect(const Vector3f& v0, const Vector3f& v1,
                           const Vector3f& v2, const Vector3f& orig,
                           const Vector3f& dir, float& tnear, float& u, float& v)
@@ -38,7 +38,7 @@ bool rayTriangleIntersect(const Vector3f& v0, const Vector3f& v1,
 
     return true;
 }
-
+// 三角形
 class Triangle : public Object
 {
 public:
@@ -71,7 +71,7 @@ public:
     Vector3f evalDiffuseColor(const Vector2f&) const override;
     Bounds3 getBounds() override;
 };
-
+// 三角形网格
 class MeshTriangle : public Object
 {
 public:
@@ -122,7 +122,7 @@ public:
         std::vector<Object*> ptrs;
         for (auto& tri : triangles)
             ptrs.push_back(&tri);
-
+        //BVH空间划分树
         bvh = new BVHAccel(ptrs);
     }
 
@@ -174,7 +174,7 @@ public:
         return lerp(Vector3f(0.815, 0.235, 0.031),
                     Vector3f(0.937, 0.937, 0.231), pattern);
     }
-
+    // 判断是否相交，判断是否和包围盒相交
     Intersection getIntersection(Ray ray)
     {
         Intersection intersec;
@@ -186,16 +186,21 @@ public:
         return intersec;
     }
 
+    // 三角形网格包围盒
     Bounds3 bounding_box;
+    // 三角形网格的所有顶点
     std::unique_ptr<Vector3f[]> vertices;
+    // 三角形网格的三角形个数
     uint32_t numTriangles;
+    // 顶点索引
     std::unique_ptr<uint32_t[]> vertexIndex;
+    // 纹理坐标
     std::unique_ptr<Vector2f[]> stCoordinates;
-
+    // 三角形网格的所有三角形
     std::vector<Triangle> triangles;
 
     BVHAccel* bvh;
-
+    // 材质
     Material* m;
 };
 
@@ -230,12 +235,13 @@ inline Intersection Triangle::getIntersection(Ray ray)
     if (v < 0 || u + v > 1)
         return inter;
     t_tmp = dotProduct(e2, qvec) * det_inv;
-
     // TODO find ray triangle intersection
-
-
-
-
+    inter.happened = true;
+    inter.coords = ray.origin + t_tmp * ray.direction;
+    inter.normal = normal;
+    inter.distance = t_tmp;
+    inter.obj = this;
+    inter.m = this->m;
     return inter;
 }
 

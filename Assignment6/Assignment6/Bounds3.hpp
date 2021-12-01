@@ -8,10 +8,11 @@
 #include "Vector.hpp"
 #include <limits>
 #include <array>
-
+// 包围盒
 class Bounds3
 {
   public:
+      // 包围盒的两个对角线顶点
     Vector3f pMin, pMax; // two points to specify the bounding box
     Bounds3()
     {
@@ -26,26 +27,28 @@ class Bounds3
         pMin = Vector3f(fmin(p1.x, p2.x), fmin(p1.y, p2.y), fmin(p1.z, p2.z));
         pMax = Vector3f(fmax(p1.x, p2.x), fmax(p1.y, p2.y), fmax(p1.z, p2.z));
     }
-
+    // 包围盒对角线
     Vector3f Diagonal() const { return pMax - pMin; }
+    // 用于确定包围盒形状（空间划分时确定划分方式）
     int maxExtent() const
     {
         Vector3f d = Diagonal();
-        if (d.x > d.y && d.x > d.z)
+        if (d.x > d.y && d.x > d.z)// x 轴方向长度最长
             return 0;
-        else if (d.y > d.z)
+        else if (d.y > d.z)//y 轴方向长度最长
             return 1;
         else
-            return 2;
+            return 2;// z 轴方向长度最长
     }
-
+    // 包围盒表面积
     double SurfaceArea() const
     {
         Vector3f d = Diagonal();
         return 2 * (d.x * d.y + d.x * d.z + d.y * d.z);
     }
-
+    // 包围盒中心
     Vector3f Centroid() { return 0.5 * pMin + 0.5 * pMax; }
+    // 包围盒求交
     Bounds3 Intersect(const Bounds3& b)
     {
         return Bounds3(Vector3f(fmax(pMin.x, b.pMin.x), fmax(pMin.y, b.pMin.y),
@@ -53,7 +56,7 @@ class Bounds3
                        Vector3f(fmin(pMax.x, b.pMax.x), fmin(pMax.y, b.pMax.y),
                                 fmin(pMax.z, b.pMax.z)));
     }
-
+    //p 点相对于包围盒的偏移量
     Vector3f Offset(const Vector3f& p) const
     {
         Vector3f o = p - pMin;
@@ -65,7 +68,7 @@ class Bounds3
             o.z /= pMax.z - pMin.z;
         return o;
     }
-
+    // 判断两个包围盒是否有交集
     bool Overlaps(const Bounds3& b1, const Bounds3& b2)
     {
         bool x = (b1.pMax.x >= b2.pMin.x) && (b1.pMin.x <= b2.pMax.x);
@@ -73,7 +76,7 @@ class Bounds3
         bool z = (b1.pMax.z >= b2.pMin.z) && (b1.pMin.z <= b2.pMax.z);
         return (x && y && z);
     }
-
+    // 判断点是否在包围盒内
     bool Inside(const Vector3f& p, const Bounds3& b)
     {
         return (p.x >= b.pMin.x && p.x <= b.pMax.x && p.y >= b.pMin.y &&
@@ -83,7 +86,7 @@ class Bounds3
     {
         return (i == 0) ? pMin : pMax;
     }
-
+    // 光线和包围盒相交
     inline bool IntersectP(const Ray& ray, const Vector3f& invDir,
                            const std::array<int, 3>& dirisNeg) const;
 };
@@ -94,11 +97,28 @@ inline bool Bounds3::IntersectP(const Ray& ray, const Vector3f& invDir,
                                 const std::array<int, 3>& dirIsNeg) const
 {
     // invDir: ray direction(x,y,z), invDir=(1.0/x,1.0/y,1.0/z), use this because Multiply is faster that Division
-    // dirIsNeg: ray direction(x,y,z), dirIsNeg=[int(x>0),int(y>0),int(z>0)], use this to simplify your logic
+    // dirIsNeg: ray direction(x,y,z), dirIsNeg=[int(x<0),int(y<0),int(z<0)], use this to simplify your logic
     // TODO test if ray bound intersects
-    
+    float tx_max, tx_min, ty_max, ty_min, tz_max, tz_min;
+    tx_max = (pMax.x - ray.origin.x) * invDir.x;
+    tx_min = (pMin.x - ray.origin.x) * invDir.x;
+    ty_max = (pMax.y - ray.origin.y) * invDir.y;
+    ty_min = (pMin.y - ray.origin.y) * invDir.y;
+    tz_max = (pMax.z - ray.origin.z) * invDir.z;
+    tz_min = (pMin.z - ray.origin.z) * invDir.z;
+    if (dirIsNeg[0]) std::swap(tx_max, tx_min);
+    if (dirIsNeg[1]) std::swap(ty_max, ty_min);
+    if (dirIsNeg[2]) std::swap(tz_max, tz_min);
+    float t_enter, t_exit;
+    t_enter = std::max(std::max(tx_min, ty_min), tz_min);
+    t_exit = std::min(std::min(tx_max, ty_max), tz_max);
+    if (t_enter < t_exit && t_exit >= 0)
+    {
+        return true;
+    }
+    return false;
 }
-
+// 两个包围盒求并
 inline Bounds3 Union(const Bounds3& b1, const Bounds3& b2)
 {
     Bounds3 ret;
@@ -106,7 +126,7 @@ inline Bounds3 Union(const Bounds3& b1, const Bounds3& b2)
     ret.pMax = Vector3f::Max(b1.pMax, b2.pMax);
     return ret;
 }
-
+// 包围盒和点求并
 inline Bounds3 Union(const Bounds3& b, const Vector3f& p)
 {
     Bounds3 ret;

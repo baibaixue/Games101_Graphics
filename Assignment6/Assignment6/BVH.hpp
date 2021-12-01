@@ -38,14 +38,18 @@ public:
     BVHBuildNode* root;
 
     // BVHAccel Private Methods
+    // 递归构建
     BVHBuildNode* recursiveBuild(std::vector<Object*>objects);
 
     // BVHAccel Private Data
+    // 一个节点中最大图元的个数
     const int maxPrimsInNode;
+    // 空间划分方法
     const SplitMethod splitMethod;
+    // 所有的几何图元
     std::vector<Object*> primitives;
 };
-
+// BVH空间划分树节点
 struct BVHBuildNode {
     Bounds3 bounds;
     BVHBuildNode *left;
